@@ -143,9 +143,9 @@ export default function HomePage() {
   return (
     <main className="container">
       <div className="hero">
-        <h1>Drink Counter</h1>
+        <h1>PINT FOR PINT</h1>
         <p className="subtitle">
-          Track drinks, compete with friends, and see who is leading the night.
+          SIGN UP BRUH
         </p>
       </div>
 
