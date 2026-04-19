@@ -23,6 +23,8 @@ export default function HomePage() {
     [players, currentUser]
   );
 
+  const topPlayer = players.length > 0 ? players[0] : null;
+
   async function fetchPlayers() {
     const { data, error } = await supabase
       .from('players')
@@ -81,7 +83,7 @@ export default function HomePage() {
     const { data: existing, error: existingError } = await supabase
       .from('players')
       .select('*')
-      .eq('username', clean)
+      .ilike('username', clean)
       .maybeSingle();
 
     if (existingError) {
@@ -140,16 +142,16 @@ export default function HomePage() {
 
   return (
     <main className="container">
-      <div className="card hero">
-        <h1>Drink Counter 🍻</h1>
+      <div className="hero">
+        <h1>Drink Counter</h1>
         <p className="subtitle">
-          Join with a username, track your drinks, and see the live leaderboard.
+          Track drinks, compete with friends, and see who is leading the night.
         </p>
       </div>
 
       <div className="grid">
         <section className="card">
-          <h2>Join Game</h2>
+          <h2>Player Panel</h2>
 
           {!currentUser ? (
             <>
@@ -159,14 +161,14 @@ export default function HomePage() {
               <input
                 id="username"
                 type="text"
-                placeholder="Enter username"
+                placeholder="Enter your username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input"
                 maxLength={20}
               />
               <button onClick={joinGame} disabled={loading} className="button">
-                {loading ? 'Joining...' : 'Join'}
+                {loading ? 'Joining...' : 'Join Game'}
               </button>
             </>
           ) : (
@@ -199,10 +201,70 @@ export default function HomePage() {
         </section>
 
         <section className="card">
-          <h2>Leaderboard</h2>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '18px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div>
+              <h2 style={{ marginBottom: '6px' }}>Leaderboard</h2>
+              <p style={{ margin: 0, color: '#8c8c96', fontSize: '0.85rem' }}>
+                Live ranking by total drinks
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: '#0b0b0d',
+                border: '1px solid #232326',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                minWidth: '160px',
+              }}
+            >
+              <div style={{ fontSize: '0.72rem', color: '#8c8c96', marginBottom: '4px' }}>
+                Total Players
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{players.length}</div>
+            </div>
+          </div>
+
+          {topPlayer && (
+            <div
+              style={{
+                background: '#140c12',
+                border: '1px solid #ff4fa3',
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '18px',
+              }}
+            >
+              <div style={{ fontSize: '0.78rem', color: '#ff9bc9', marginBottom: '8px' }}>
+                🏆 Top Player
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '1rem' }}>{topPlayer.username}</div>
+                <div style={{ color: '#ff4fa3', fontWeight: 700, fontSize: '1.1rem' }}>
+                  {topPlayer.drink_count}
+                </div>
+              </div>
+            </div>
+          )}
 
           {players.length === 0 ? (
-            <p>No players yet.</p>
+            <p style={{ color: '#8c8c96' }}>No players yet.</p>
           ) : (
             <ol className="leaderboard">
               {players.map((player, index) => {
@@ -216,8 +278,9 @@ export default function HomePage() {
                     className={`leaderboard-item ${isCurrentUser ? 'active-player' : ''}`}
                   >
                     <div>
-                      <span className="rank">#{index + 1}</span>{' '}
+                      <span className="rank">#{index + 1}</span>
                       <span className="player-name">{player.username}</span>
+                      {index === 0 && <span className="badge">Top</span>}
                       {isCurrentUser && <span className="badge">You</span>}
                     </div>
                     <strong>{player.drink_count}</strong>

@@ -6,9 +6,9 @@ html,
 body {
   padding: 0;
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #0f172a;
-  color: #e2e8f0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #050505;
+  color: #f5f5f5;
 }
 
 body {
@@ -16,25 +16,35 @@ body {
 }
 
 .container {
-  max-width: 980px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 16px 48px;
+  padding: 40px 20px 56px;
 }
 
+/* Header */
+
 .hero {
-  margin-bottom: 20px;
+  margin-bottom: 28px;
   text-align: center;
 }
 
 .hero h1 {
-  margin: 0 0 8px;
-  font-size: 2.2rem;
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #ff4fa3;
 }
 
 .subtitle {
-  margin: 0;
-  color: #cbd5e1;
+  margin: 0 auto;
+  max-width: 620px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #a1a1aa;
 }
+
+/* Layout */
 
 .grid {
   display: grid;
@@ -42,146 +52,230 @@ body {
   gap: 20px;
 }
 
-@media (min-width: 850px) {
+@media (min-width: 900px) {
   .grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 360px 1fr;
+    align-items: start;
   }
 }
 
+/* Cards */
+
 .card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  background: #111113;
+  border: 1px solid #232326;
+  border-radius: 18px;
+  padding: 22px;
 }
 
 .card h2 {
-  margin-top: 0;
+  margin: 0 0 18px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
 }
+
+.card:last-child {
+  min-height: 560px;
+}
+
+/* Form */
 
 .label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #c4c4cc;
 }
 
 .input {
   width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid #475569;
-  background: #0f172a;
-  color: white;
+  padding: 13px 14px;
+  border: 1px solid #2d2d33;
+  border-radius: 12px;
+  background: #0b0b0d;
+  color: #ffffff;
   margin-bottom: 12px;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
+
+.input::placeholder {
+  color: #6f6f78;
+}
+
+.input:focus {
+  border-color: #ff4fa3;
+  background: #101014;
+}
+
+/* Buttons */
 
 .button {
   width: 100%;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 14px;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
-  background: #38bdf8;
-  color: #082f49;
+  transition: transform 0.15s ease, opacity 0.2s ease, background 0.2s ease;
 }
 
 .button:hover {
   opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.button {
+  background: #ff4fa3;
+  color: #111;
 }
 
 .button.secondary {
-  background: #cbd5e1;
-  color: #0f172a;
+  background: #222228;
+  color: #ffffff;
 }
 
 .button.success {
-  background: #4ade80;
-  color: #052e16;
+  background: #ff4fa3;
+  color: #111;
 }
 
 .button.danger {
-  background: #f87171;
-  color: #450a0a;
+  background: #2a121c;
+  color: #ff7ab8;
+  border: 1px solid #4b1f33;
 }
 
 .button-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
   margin-top: 10px;
 }
 
+/* User section */
+
 .current-user {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  color: #d4d4d8;
 }
 
 .counter-box {
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 14px;
-  padding: 16px;
+  background: #0b0b0d;
+  border: 1px solid #232326;
+  border-radius: 16px;
+  padding: 22px 18px;
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .count-label {
   margin: 0;
-  color: #94a3b8;
+  font-size: 0.78rem;
+  color: #8c8c96;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .count-number {
-  margin: 8px 0 0;
+  margin: 12px 0 0;
   font-size: 3rem;
-  font-weight: 800;
+  line-height: 1;
+  font-weight: 700;
+  color: #ff4fa3;
 }
+
+/* Messages */
 
 .message {
   margin-top: 14px;
-  color: #fcd34d;
+  font-size: 0.8rem;
+  color: #ffb84d;
+  line-height: 1.5;
 }
+
+/* Leaderboard */
 
 .leaderboard {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
 .leaderboard-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 12px;
+  gap: 16px;
+  background: #0b0b0d;
+  border: 1px solid #232326;
+  border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 10px;
 }
 
 .active-player {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px #38bdf8 inset;
+  border-color: #ff4fa3;
+  background: #140c12;
 }
 
 .rank {
-  color: #94a3b8;
-  margin-right: 6px;
+  display: inline-block;
+  min-width: 34px;
+  color: #8c8c96;
+  font-weight: 600;
 }
 
 .player-name {
-  font-weight: 700;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 .badge {
+  display: inline-block;
   margin-left: 8px;
-  font-size: 0.8rem;
-  background: #38bdf8;
-  color: #082f49;
-  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #ff4fa3;
+  color: #111;
+  padding: 4px 8px;
   border-radius: 999px;
-  font-weight: 700;
+}
+
+.leaderboard-item strong {
+  font-size: 1rem;
+  color: #ff4fa3;
+}
+
+/* Small screen tweaks */
+
+@media (max-width: 600px) {
+  .container {
+    padding: 24px 14px 40px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .count-number {
+    font-size: 2.5rem;
+  }
+
+  .button-row {
+    grid-template-columns: 1fr;
+  }
 }
