@@ -521,7 +521,7 @@ export default function HomePage() {
               className="input"
               value={displayNameInput}
               onChange={(e) => setDisplayNameInput(e.target.value)}
-              placeholder="Davin"
+              placeholder="Anonymous Alcoholic"
               maxLength={24}
             />
 
