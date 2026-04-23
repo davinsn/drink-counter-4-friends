@@ -10,6 +10,7 @@ type GlobalPlayerStats = {
   total_drinks: number;
   water_count: number;
   sessions: number;
+  total_points: number;
 };
 
 const ROOM_KEY = 'drink_counter_room_code';
@@ -21,8 +22,15 @@ const DRINK_BUTTONS: Array<{ type: DrinkType; label: string; emoji: string; delt
   { type: 'beer', label: 'Beer', emoji: '🍺', delta: 1 },
   { type: 'shot', label: 'Shot', emoji: '🥃', delta: 1 },
   { type: 'cocktail', label: 'Cocktail', emoji: '🍸', delta: 1 },
-  { type: 'water', label: 'Water break', emoji: '💧', delta: 0 },
+  { type: 'water', label: 'Water break', emoji: '💧', delta: 1 },
 ];
+
+const DRINK_POINTS: Record<DrinkType, number> = {
+  beer: 5,
+  cocktail: 1,
+  shot: 10,
+  water: -1,
+};
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -61,14 +69,12 @@ export default function HomePage() {
   const [busyAction, setBusyAction] = useState('');
   const [message, setMessage] = useState('');
 
-  const sortedMembers = useMemo(
-    () =>
-      [...members].sort((a, b) => {
-        if (b.total_drinks !== a.total_drinks) return b.total_drinks - a.total_drinks;
-        return new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime();
-      }),
-    [members]
-  );
+  const sortedMembers = [...members].sort((a, b) => {
+  if ((b.total_points ?? 0) !== (a.total_points ?? 0)) {
+    return (b.total_points ?? 0) - (a.total_points ?? 0);
+  }
+  return b.total_drinks - a.total_drinks;
+});
 
   const currentMember = useMemo(
     () => members.find((member) => member.id === currentMemberId) ?? null,
@@ -83,45 +89,50 @@ export default function HomePage() {
   const isHost = currentMember?.role === 'host';
 
   async function fetchGlobalLeaders() {
-    const { data, error } = await supabase
-      .from('room_members')
-      .select('player_id, total_drinks, water_count, players(id, display_name)');
+  const { data, error } = await supabase
+    .from('room_members')
+    .select('player_id, total_drinks, water_count, total_points, players(id, display_name)');
 
-    if (error) {
-      setMessage((current) => current || 'Unable to load global leaderboard.');
-      return;
-    }
-
-    const grouped = new Map<string, GlobalPlayerStats>();
-
-    for (const row of ((data ?? []) as unknown as RoomMember[])) {
-      const playerId = row.player_id;
-      const name = row.players?.display_name ?? 'Unknown player';
-      const existing = grouped.get(playerId);
-
-      if (existing) {
-        existing.total_drinks += row.total_drinks ?? 0;
-        existing.water_count += row.water_count ?? 0;
-        existing.sessions += 1;
-      } else {
-        grouped.set(playerId, {
-          player_id: playerId,
-          display_name: name,
-          total_drinks: row.total_drinks ?? 0,
-          water_count: row.water_count ?? 0,
-          sessions: 1,
-        });
-      }
-    }
-
-    const ranked = [...grouped.values()].sort((a, b) => {
-      if (b.total_drinks !== a.total_drinks) return b.total_drinks - a.total_drinks;
-      if (b.sessions !== a.sessions) return b.sessions - a.sessions;
-      return a.display_name.localeCompare(b.display_name);
-    });
-
-    setGlobalLeaders(ranked);
+  if (error) {
+    setMessage((current) => current || 'Unable to load global leaderboard.');
+    return;
   }
+
+  const grouped = new Map<string, GlobalPlayerStats>();
+
+  for (const row of ((data ?? []) as unknown as RoomMember[])) {
+    const playerId = row.player_id;
+    const name = row.players?.display_name ?? 'Unknown player';
+    const existing = grouped.get(playerId);
+
+    if (existing) {
+      existing.total_drinks += row.total_drinks ?? 0;
+      existing.water_count += row.water_count ?? 0;
+      existing.total_points += row.total_points ?? 0;
+      existing.sessions += 1;
+    } else {
+      grouped.set(playerId, {
+        player_id: playerId,
+        display_name: name,
+        total_drinks: row.total_drinks ?? 0,
+        water_count: row.water_count ?? 0,
+        total_points: row.total_points ?? 0,
+        sessions: 1,
+      });
+    }
+  }
+
+  const ranked = [...grouped.values()].sort((a, b) => {
+    if ((b.total_points ?? 0) !== (a.total_points ?? 0)) {
+      return (b.total_points ?? 0) - (a.total_points ?? 0);
+    }
+    if (b.total_drinks !== a.total_drinks) return b.total_drinks - a.total_drinks;
+    if (b.sessions !== a.sessions) return b.sessions - a.sessions;
+    return a.display_name.localeCompare(b.display_name);
+  });
+
+  setGlobalLeaders(ranked);
+}
 
   async function fetchRoomBundle(nextRoomCode: string, nextMemberId?: string) {
     const normalizedCode = nextRoomCode.trim().toUpperCase();
@@ -143,7 +154,7 @@ export default function HomePage() {
 
     const { data: memberData, error: memberError } = await supabase
       .from('room_members')
-      .select('id, room_id, player_id, role, total_drinks, water_count, joined_at, players(id, display_name)')
+      .select('id, room_id, player_id, role, total_drinks, water_count, total_points, joined_at, players(id, display_name)')
       .eq('room_id', roomData.id);
 
     const { data: eventData, error: eventError } = await supabase
@@ -232,38 +243,45 @@ export default function HomePage() {
 
   async function getOrCreatePlayer(displayName: string) {
   const cleanName = displayName.trim();
-  if (cleanName.length < 2) throw new Error('Display name must be at least 2 characters.');
+  if (cleanName.length < 2) throw new Error('Name too short');
 
-  const user = await ensureSignedIn();
+  const deviceKey = getDeviceKey(); // your existing function
 
-  const { data: existingPlayer, error: existingError } = await supabase
+  // 1. check if player exists
+  const { data: existing, error: fetchError } = await supabase
     .from('players')
     .select('*')
-    .eq('auth_user_id', user.id)
+    .eq('device_key', deviceKey)
     .maybeSingle();
 
-  if (existingError) throw existingError;
+  if (fetchError) throw fetchError;
 
-  if (existingPlayer) {
-    const { data: updatedPlayer, error: updateError } = await supabase
+  // 2. if exists → update name
+  if (existing) {
+    const { data: updated, error: updateError } = await supabase
       .from('players')
       .update({ display_name: cleanName })
-      .eq('id', existingPlayer.id)
-      .select('*')
+      .eq('id', existing.id)
+      .select()
       .single();
 
     if (updateError) throw updateError;
-    return updatedPlayer as Player;
+    return updated;
   }
 
-  const { data: newPlayer, error: insertError } = await supabase
+  // 3. if not → insert
+  const { data: created, error: insertError } = await supabase
     .from('players')
-    .insert([{ auth_user_id: user.id, display_name: cleanName }])
-    .select('*')
+    .insert({
+      device_key: deviceKey,
+      display_name: cleanName,
+    })
+    .select()
     .single();
 
   if (insertError) throw insertError;
-  return newPlayer as Player;
+
+  return created;
 }
 
   async function ensureMembership(targetRoom: Room, player: Player, role: 'host' | 'member') {
@@ -362,66 +380,89 @@ export default function HomePage() {
   }
 
   async function logDrink(drinkType: DrinkType, delta: number) {
-    if (!room || !currentMember) {
-      setMessage('Create or join a room first.');
-      return;
-    }
-
-    if (delta < 0 && currentMember.total_drinks <= 0) {
-      setMessage('Your count is already at zero.');
-      return;
-    }
-
-    try {
-      setBusyAction(drinkType);
-      setMessage('');
-
-      const nextTotal = Math.max(0, currentMember.total_drinks + delta);
-      const nextWater = drinkType === 'water' ? currentMember.water_count + 1 : currentMember.water_count;
-
-      const { error: updateError } = await supabase
-        .from('room_members')
-        .update({ total_drinks: nextTotal, water_count: nextWater })
-        .eq('id', currentMember.id);
-
-      if (updateError) throw updateError;
-
-      const actorName = currentMember.players?.display_name ?? 'Unknown player';
-      const { error: eventError } = await supabase.from('drink_events').insert([
-        {
-          room_id: room.id,
-          member_id: currentMember.id,
-          actor_name: actorName,
-          drink_type: drinkType,
-          delta,
-        },
-      ]);
-
-      if (eventError) throw eventError;
-
-      await fetchRoomBundle(room.code, currentMember.id);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update drinks.');
-    } finally {
-      setBusyAction('');
-    }
+  if (!room || !currentMember) {
+    setMessage('Create or join a room first.');
+    return;
   }
+
+  const isWater = drinkType === 'water';
+  const basePoints = DRINK_POINTS[drinkType] ?? 0;
+  const pointsDelta = basePoints * delta;
+
+  if (!isWater && delta < 0 && currentMember.total_drinks <= 0) {
+    setMessage('Your count is already at zero.');
+    return;
+  }
+
+  if (!isWater && delta < 0 && (currentMember.total_points ?? 0) <= 0) {
+    setMessage('Your score is already at zero.');
+    return;
+  }
+
+  try {
+    setBusyAction(drinkType);
+    setMessage('');
+
+    const nextTotal = isWater
+      ? currentMember.total_drinks
+      : Math.max(0, currentMember.total_drinks + delta);
+
+    const nextWater = isWater
+      ? Math.max(0, currentMember.water_count + (delta > 0 ? 1 : -1))
+      : currentMember.water_count;
+
+    const nextPoints = Math.max(0, (currentMember.total_points ?? 0) + pointsDelta);
+
+    const { error: updateError } = await supabase
+      .from('room_members')
+      .update({
+        total_drinks: nextTotal,
+        water_count: nextWater,
+        total_points: nextPoints,
+      })
+      .eq('id', currentMember.id);
+
+    if (updateError) throw updateError;
+
+    const actorName = currentMember.players?.display_name ?? 'Unknown player';
+    const { error: eventError } = await supabase.from('drink_events').insert([
+      {
+        room_id: room.id,
+        member_id: currentMember.id,
+        actor_name: actorName,
+        drink_type: drinkType,
+        delta,
+        points: pointsDelta,
+      },
+    ]);
+
+    if (eventError) throw eventError;
+
+    await fetchRoomBundle(room.code, currentMember.id);
+  } catch (error) {
+    setMessage(error instanceof Error ? error.message : 'Unable to update drinks.');
+  } finally {
+    setBusyAction('');
+  }
+}
 
   async function undoLastDrink() {
-    if (!room || !currentMember) return;
+  if (!room || !currentMember) return;
 
-    const lastPositive = events.find(
-      (event) => event.member_id === currentMember.id && event.delta > 0 && event.drink_type !== 'water'
-    );
+  const lastPositive = events.find(
+    (event) =>
+      event.member_id === currentMember.id &&
+      event.delta > 0 &&
+      event.drink_type !== 'water'
+  );
 
-    if (!lastPositive) {
-      setMessage('No recent drink to undo.');
-      return;
-    }
-
-    await logDrink(lastPositive.drink_type, -1);
+  if (!lastPositive) {
+    setMessage('No recent drink to undo.');
+    return;
   }
 
+  await logDrink(lastPositive.drink_type, -1);
+}
   async function resetSession() {
     if (!room || !isHost) {
       setMessage('Only the host can reset the room.');
@@ -436,7 +477,7 @@ export default function HomePage() {
         members.map((member) =>
           supabase
             .from('room_members')
-            .update({ total_drinks: 0, water_count: 0 })
+            .update({ total_drinks: 0, water_count: 0, total_points: 0 })
             .eq('id', member.id)
         )
       );
@@ -605,8 +646,9 @@ export default function HomePage() {
                 </div>
 
                 <div className="count-box">
-                  <span>Your drinks</span>
-                  <strong>{currentMember?.total_drinks ?? 0}</strong>
+                  <span>Your points</span>
+                  <strong>{currentMember?.total_points ?? 0}</strong>
+                  <small>{currentMember?.total_drinks ?? 0} drinks</small>
                 </div>
 
                 <div className="drink-grid">
@@ -706,7 +748,11 @@ export default function HomePage() {
                               </div>
                             </div>
                           </div>
-                          <strong>{member.total_drinks}</strong>
+                          <div className="leaderboard-score">
+                            <strong>{member.total_points ?? 0}</strong>
+                            <small>pts</small>
+                          </div>
+                          <span>{member.total_drinks} drinks</span>
                         </li>
                       );
                     })}
@@ -740,7 +786,10 @@ export default function HomePage() {
                               </div>
                             </div>
                           </div>
-                          <strong>{player.total_drinks}</strong>
+                          <div className="leaderboard-score">
+                            <strong>{player.total_points ?? 0}</strong>
+                            <small>pts</small>
+                          </div>
                         </li>
                       );
                     })}

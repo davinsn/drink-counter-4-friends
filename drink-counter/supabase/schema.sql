@@ -177,3 +177,10 @@ create policy "signed in delete drink events"
 on public.drink_events
 for delete
 using (auth.uid() is not null);
+
+
+alter table public.room_members
+add column if not exists total_points integer not null default 0 check (total_points >= 0);
+
+alter table public.drink_events
+add column if not exists points integer not null default 0;

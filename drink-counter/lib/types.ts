@@ -24,6 +24,7 @@ export type RoomMember = {
   role: 'host' | 'member';
   total_drinks: number;
   water_count: number;
+  total_points: number;
   joined_at: string;
   players: Pick<Player, 'id' | 'display_name'> | null;
 };
@@ -35,5 +36,6 @@ export type DrinkEvent = {
   actor_name: string;
   drink_type: DrinkType;
   delta: number;
+  points: number;
   created_at: string;
 };
