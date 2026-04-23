@@ -215,41 +215,56 @@ export default function HomePage() {
     };
   }, [room?.id, room?.code, currentMemberId]);
 
+  async function ensureSignedIn() {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+
+  if (sessionData.session?.user) {
+    return sessionData.session.user;
+  }
+
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) throw error;
+  if (!data.user) throw new Error('Unable to create anonymous session.');
+
+  return data.user;
+}
+
   async function getOrCreatePlayer(displayName: string) {
-    const cleanName = displayName.trim();
-    if (cleanName.length < 2) throw new Error('Display name must be at least 2 characters.');
+  const cleanName = displayName.trim();
+  if (cleanName.length < 2) throw new Error('Display name must be at least 2 characters.');
 
-    const deviceKey = getDeviceKey();
+  const user = await ensureSignedIn();
 
-    const { data: existingPlayer, error: existingError } = await supabase
+  const { data: existingPlayer, error: existingError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (existingPlayer) {
+    const { data: updatedPlayer, error: updateError } = await supabase
       .from('players')
-      .select('*')
-      .eq('device_key', deviceKey)
-      .maybeSingle();
-
-    if (existingError) throw existingError;
-
-    if (existingPlayer) {
-      const { data: updatedPlayer, error: updateError } = await supabase
-        .from('players')
-        .update({ display_name: cleanName })
-        .eq('id', existingPlayer.id)
-        .select('*')
-        .single();
-
-      if (updateError) throw updateError;
-      return updatedPlayer as Player;
-    }
-
-    const { data: newPlayer, error: insertError } = await supabase
-      .from('players')
-      .insert([{ device_key: deviceKey, display_name: cleanName }])
+      .update({ display_name: cleanName })
+      .eq('id', existingPlayer.id)
       .select('*')
       .single();
 
-    if (insertError) throw insertError;
-    return newPlayer as Player;
+    if (updateError) throw updateError;
+    return updatedPlayer as Player;
   }
+
+  const { data: newPlayer, error: insertError } = await supabase
+    .from('players')
+    .insert([{ auth_user_id: user.id, display_name: cleanName }])
+    .select('*')
+    .single();
+
+  if (insertError) throw insertError;
+  return newPlayer as Player;
+}
 
   async function ensureMembership(targetRoom: Room, player: Player, role: 'host' | 'member') {
     const { data: existingMembership, error: membershipError } = await supabase
